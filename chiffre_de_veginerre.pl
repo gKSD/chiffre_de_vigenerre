@@ -32,7 +32,7 @@ sub extract_bigramms {
 
     my @text_array = split(//, $text);
     my %res = ();
-    my $len = length($_text);
+    my $len = length($text);
 
     for (my $i = 0; $i < $len - 2; $i++) {
        my $bg = $text_array[$i].$text_array[$i + 1];
@@ -175,7 +175,12 @@ sub decode_text {
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-my $cipher = lc $_text; #это передаем везде в качестве текста
+unless ($ARGV[0]) {
+    print "Error, cipher has not been set\n";
+    exit;
+}
+#TODO lc all the sub pararms
+my $cipher = lc $ARGV[0]; #$_text; #это передаем везде в качестве текста
 
 sort_alphabet_by_frequency(\@_alphabet, \@_frequency, 26);
 my %bigramms = extract_bigramms($cipher);
