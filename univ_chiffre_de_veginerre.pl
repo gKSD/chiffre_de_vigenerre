@@ -13,18 +13,33 @@ my @_frequency = (8.2, 1.5, 2.8, 4.2, 12.7, 2.2, 2.0, 6.1, 7.0, 0.1, 0.8, 4.0, 2
 my @rus_alphabet = ('а',    'б',   'в',   'г',   'д',   'е',   'ж',   'з',   'и',   'й',   'к',  'л', 'м', 'н', 'о', 'п', 'р', 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ы', 'ъ', 'ь', 'э', 'ю', 'я');
 my @rus_frequency = (0.062, 0.014, 0.038, 0.013, 0.025, 0.072, 0.007, 0.016, 0.062, 0.01, 0.028, 0.035, 0.026, 0.053, 0.09, 0.023, 0.04, 0.045, 0.053, 0.021, 0.002, 0.009, 0.004, 0.012, 0.006, 0.003, 0.014, 0.016, 0.014, 0.003, 0.006, 0.018);
 
+my @cut_rus_alphabet = ('а',    'б',   'в',   'г',   'д',   'е',   'ж',   'з',   'и',   'к',  'л',    'м',   'н',   'о',  'п',   'р', 'с',    'т',   'у',   'ф',   'х',   'ц',   'ч',   'ш',   'щ',   'ы', 'ь', 'ю', 'я');
+my @cut_rus_frequency = (0.062, 0.014, 0.038, 0.013, 0.025, 0.072, 0.007, 0.016, 0.062, 0.028, 0.035, 0.026, 0.053, 0.09, 0.023, 0.04, 0.045, 0.053, 0.021, 0.002, 0.009, 0.004, 0.012, 0.006, 0.003, 0.016, 0.014, 0.006, 0.018);
+
+
 my $_text = "xtxafslwpmccpjifvbdbsmccpjifvjpgxqycccxavpecxmpegwiyjfpjiwflthlxzphdmmvzjhmgkftcrlvrrcqxjmhveecgiowmvyitmkjriviovpnkskjrdtjhirjbildgvvxtebdhlxiqifebeqdtahvuwwgaemlgixdudsgndnpfiwngivphjqdtxavclwpeemigixdqd";
 my $rus_text = "сиздфчаякбрнючччпюрнкобуекелецхмчмцнтзучщищуешоклукеглгнчбзорпиофнзлугоекчфннеубщвюч";
 
 
-my $rus_mod = 32;
+#my $rus_mod = 32;
 
-print "rus_alphabet => @rus_alphabet \n";
-print "rus freq => ".Dumper(\@rus_frequency)."\n";
-print "alp len ". $#rus_alphabet.",  freq len => ".$#rus_frequency."\n";
-print "code a => ".ord('а').", г => ".ord('г').", наборот ".chr(1075)."\n";
-print "rus text => ".$rus_text."\n";
-#exit;
+sub get_symbol_index_in_alphabet {
+    my ($s, $alphabet) = @_;
+
+    my $len = scalar(@{$alphabet}) - 1;
+    foreach my $i (0..$len) {
+        if ($s eq $alphabet->[$i]) {
+            return $i;
+        }
+    }
+    return -1;
+}
+
+sub get_symbol_in_alphabet {
+    my ($code, $alphabet) = @_;
+    return ($code >= scalar(@{$alphabet})? $alphabet->[-1]: $alphabet->[$code]);
+}
+
 
 sub sort_alphabet_by_frequency {
     my ($alphabet, $frequency, $size) = @_;
@@ -103,14 +118,18 @@ sub NOD {
     return  $_[0] != 0  ?  NOD ( ( $_[1] % $_[0] ), $_[0] )  :  $_[1];
 }
 
-sub get_alpha_num {
-}
 
 sub decode_key_word {
     #here is decoding each symbol of key word
     my ($nod, $text, $alphabet, $frequency, $alphabet_symbols_amount) = @_;
+    print "*******************************************************************************************************************************************************\n";
 
-    if ($alphabet_symbols_amount > 26) {$$alphabet_symbols_amount = 26;}
+    my $mod = scalar(@{$alphabet});
+    my @sorted_alphabet = @{$alphabet};
+    my @sorted_frequency = @{$frequency};
+    sort_alphabet_by_frequency(\@sorted_alphabet, \@sorted_frequency, $mod);
+
+    if ($alphabet_symbols_amount > $mod) {$$alphabet_symbols_amount = $mod;}
     elsif ($alphabet_symbols_amount <= 0) {$alphabet_symbols_amount = 1;}
 
     my @text_ar = split(//, $text);
@@ -134,9 +153,10 @@ sub decode_key_word {
         {
             my %possible_key_symbols = ();
             foreach my $t_symbol (@t_symbols_sorted) {
-                my $t_symbol_code = ord($t_symbol) - ord('а');
+                my $t_symbol_code = get_symbol_index_in_alphabet($t_symbol, $alphabet);# ord($t_symbol) - ord('а');
                 foreach my $j (0..($alphabet_symbols_amount - 1)) {
-                    my $key_symbol = (26 - (ord($alphabet->[$j]) - ord('а')) + $t_symbol_code)%($rus_mod);
+                    my $key_symbol = ($mod - get_symbol_index_in_alphabet($sorted_alphabet[$j], $alphabet) + $t_symbol_code)%($mod);
+                    print "1111 key_symbol => $key_symbol\n";
                     if (exists $possible_key_symbols{$key_symbol}) {
                         $possible_key_symbols{$key_symbol}++;
                     }
@@ -145,11 +165,18 @@ sub decode_key_word {
                     }
                 }
             }
+            print "possible key symbols => ";
+            foreach my $it (keys %possible_key_symbols) {
+                print $it." => ".$possible_key_symbols{$it}."\n";
+            }
             my @possible_key_symbols_sorted = sort {$possible_key_symbols{$b} <=> $possible_key_symbols{$a}} keys(%possible_key_symbols);
             my @possible_key_symbols_freq_sorted = @possible_key_symbols{@possible_key_symbols_sorted};
 
+            print "sorted key symbols: @possible_key_symbols_sorted\n";
+            print "sorted key symbols freq: @possible_key_symbols_freq_sorted\n";
+
             if ($possible_key_symbols_freq_sorted[0] != $possible_key_symbols_freq_sorted[1]) {
-                $key_word_ar[$i] = chr($possible_key_symbols_sorted[0] + ord('а'));
+                $key_word_ar[$i] = get_symbol_in_alphabet($possible_key_symbols_sorted[0], $alphabet) ;
                 push @key_word_variants, [$key_word_ar[$i]];
             }
             else {
@@ -157,7 +184,7 @@ sub decode_key_word {
                 my @ar = ();
                 my $j = 0;
                 while ($possible_key_symbols_freq_sorted[$j] == $possible_key_symbols_freq_sorted[0]) {
-                    push @ar, chr($possible_key_symbols_sorted[$j] + ord('а'));
+                    push @ar, get_symbol_in_alphabet($possible_key_symbols_sorted[$j], $alphabet);
                     $j++;
                 }
                 push @key_word_variants, \@ar;
@@ -171,8 +198,9 @@ sub decode_key_word {
 }
 
 sub decode_text {
-    my ($cipher, $key, $nod) = @_;
+    my ($cipher, $key, $nod, $alphabet, $frequency) = @_;
 
+    my $mod = scalar(@{$alphabet});
     my @cipher_ar = split(//, $cipher);
     my @key_ar = split(//, $key);
     my @decoded_text_ar = ();
@@ -182,7 +210,8 @@ sub decode_text {
     my $i = 0;
     foreach my $s (@cipher_ar) {
         if ($i == $nod) {$i = 0;}
-        push @decoded_text_ar, chr((ord($s) - ord('а') - (ord($key_ar[$i]) - ord('а')) + 26)%($rus_mod) +ord('а'));
+        print "code of key $i: ".get_symbol_index_in_alphabet($key_ar[$i], $alphabet)."\n";
+        push @decoded_text_ar, get_symbol_in_alphabet((get_symbol_index_in_alphabet($s, $alphabet) - get_symbol_index_in_alphabet($key_ar[$i], $alphabet) + $mod)%$mod , $alphabet);
         $i++;
     }
    
@@ -198,9 +227,11 @@ sub decode_text {
 #}
 #TODO lc all the sub pararms
 my $cipher = lc $rus_text;#$ARGV[0]; #$_text; #это передаем везде в качестве текста
+my @cur_alphabet = @cut_rus_alphabet;
+my @cur_frequency = @cut_rus_frequency;
 
-sort_alphabet_by_frequency(\@rus_alphabet, \@rus_frequency, 26);
-print "sorted alphabet @rus_alphabet, \n and frequency => @rus_frequency\n";
+my $mod = scalar(@cur_alphabet);
+
 my %bigramms = extract_bigramms($cipher);
 
 print " ********************** Bigramms:  ********************\n";
@@ -212,13 +243,44 @@ print " ********************** Distances: ********************\n @distances\n";
 print "Enter the NOD: ";
 chomp (my $nod = <STDIN>);
 print "NOD => $nod\n";
-my %key_word_hash = decode_key_word($nod, $cipher, \@rus_alphabet, \@rus_frequency, 2);#scalar(@rus_alphabet)/2);
-print "Supposing key word: \"".$key_word_hash{'key_word'}."\"\n";
-print "Possible variants for each symbol position: ".Dumper($key_word_hash{'variants'})."\n";
+unless ($nod) {
+    print "ERROR! Invalid NOD value entered!\n";
+    exit;
+}
+if ($nod <= 0) {
+    print "ERROR! NOD value must be positive!\n";
+    exit;
+}
+#foreach my $k (1..$mod) {
+    print "###################################################################### \n";
+    my $k = scalar(@rus_alphabet) / 2;
+    my %key_word_hash = decode_key_word($nod, $cipher, \@cur_alphabet, \@cur_frequency, $k); #@scalar(@rus_alphabet)/2);
+    print "Supposing key word: \"".$key_word_hash{'key_word'}."\"\n";
+
+    print "Possible variants for each symbol position \n";
+    my $i = 0;
+    foreach my $it (@{$key_word_hash{'variants'}}) {
+        my @ar = @{$it};
+        print "Position $i: @ar\n";
+        $i++;
+    }
+    print "\n";
+#}
 print "Enter the key_word: ";
 chomp (my $key_word = <STDIN>);
-my $decoded_text = decode_text($cipher, $key_word, $nod);
+unless ($key_word) {
+    print "ERROR! Invalid key_word entered!\n";
+    exit;
+}
+print "key_word is => $key_word\n";
+my $decoded_text = decode_text($cipher, $key_word, $nod, \@cur_alphabet, \@cur_frequency);
 print "Result: $decoded_text\n";
+
+
+print "зачет => ".ord('з')." ".ord('а')." ".ord('ч')." ".ord('е')." ".ord('т')."\n";
+
+
+
 
 
 1;
